@@ -1,0 +1,60 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: ssf_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: simple_stock_flow
+      MYSQL_USER: stock_user
+      MYSQL_PASSWORD: stock_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - ssf_network
+
+  api:
+    build:
+      context: ../test-simple-stock-flow-api
+      dockerfile: Dockerfile
+    container_name: ssf_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_NAME: "SimpleStockFlow"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: simple_stock_flow
+      DB_USERNAME: stock_user
+      DB_PASSWORD: stock_password
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../test-simple-stock-flow-api:/var/www/html
+      - api_vendor:/var/www/html/vendor
+    networks:
+      - ssf_network
+
+networks:
+  ssf_network:
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local
+  api_vendor:
+    driver: local
